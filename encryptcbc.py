@@ -8,7 +8,7 @@ key = get_random_bytes(16)
 iv = get_random_bytes(16)
 
 
-def encrypt_bmp(input_file, encrypted_file):
+def encrypt_bmp(input_file, encrypted_ecb, encrypted_cbc):
     # Read the original BMP file
     with open(input_file, "rb") as bmp_file:
         bmp_data = bmp_file.read()
@@ -18,17 +18,36 @@ def encrypt_bmp(input_file, encrypted_file):
     pixel_data = bmp_data[54:]
 
     # Encrypt the pixel data
-    cipher = AES.new(key, AES.MODE_CBC, iv)
+    cipher = AES.new(key, AES.MODE_ECB)
     padded_data = pad(pixel_data, AES.block_size, style='pkcs7')
-    encrypted_data = cipher.encrypt(padded_data)
+    ecb_data = cipher.encrypt(padded_data)
 
     # Write the header, IV, and encrypted pixel data to the new file
-    with open(encrypted_file, "wb") as enc_file:
+    with open(encrypted_ecb, "wb") as enc_file:
         enc_file.write(header)  # Write the unencrypted header
-        enc_file.write(iv)      # Write the IV
-        enc_file.write(encrypted_data)  # Write the encrypted pixel data
+        enc_file.write(ecb_data)  # Write the encrypted pixel data
 
-    print(f"Encrypted BMP written to: {encrypted_file}")
+    print(f"Encrypted ECB BMP written to: {encrypted_ecb}")
+
+    iv = get_random_bytes(AES.block_size)
+    prev_result = iv
+    cbc_data = bytearray()
+
+    for i in range(0, len(padded_data), AES.block_size):
+        block = padded_data[i:i + AES.block_size]
+        xored_block = bytes(a ^ b for a, b in zip(block, prev_result))
+        encrypted_block = cipher.encrypt(xored_block)
+        cbc_data.extend(encrypted_block)
+        prev_result = encrypted_block
+
+
+    # Write the header, IV, and encrypted pixel data to the new file
+    with open(encrypted_cbc, "wb") as enc_file:
+        enc_file.write(header)  # Write the unencrypted header
+        enc_file.write(iv)
+        enc_file.write(cbc_data)  # Write the encrypted pixel data
+
+    print(f"Encrypted CBC BMP written to: {encrypted_cbc}")
 
 
 def decrypt_bmp(encrypted_file, output_file):
@@ -56,16 +75,17 @@ def decrypt_bmp(encrypted_file, output_file):
 
 # Paths to the files
 original_bmp = "cp-logo.bmp"         # Input BMP file
-encrypted_bmp = "encrypted_logo.bmp"  # Encrypted BMP file
+encrypted_ecb_bmp = "encrypted_ecb_logo.bmp"  # Encrypted BMP file
+encrypted_cbc_bmp = "encrypted_cbc_logo.bmp"  # Encrypted BMP file
 decrypted_bmp = "decrypted_logo.bmp"  # Decrypted BMP file
 
 # Perform encryption and decryption
 try:
     # Encrypt the BMP file
-    encrypt_bmp(original_bmp, encrypted_bmp)
+    encrypt_bmp(original_bmp, encrypted_ecb_bmp, encrypted_cbc_bmp)
 
     # Decrypt the BMP file
-    decrypt_bmp(encrypted_bmp, decrypted_bmp)
+    decrypt_bmp(encrypted_cbc_bmp, decrypted_bmp)
 
     # Compare original and decrypted files
     if os.path.exists(original_bmp) and os.path.exists(decrypted_bmp):

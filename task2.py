@@ -10,6 +10,9 @@ key = get_random_bytes(16)
 iv = get_random_bytes(16)
 
 
+def open_file(filename):
+    with open("cp-logo.bmp", "r") as file:
+
 def encrypt_data(data):
     # PKCS7 padding ensures the input length is a multiple of 16 bytes (the AES block size)
     padded = pad(data.encode(), 16, style='pkcs7')
@@ -50,23 +53,23 @@ try:
     print("\nOriginal ciphertext:", cipher)
 
     # The bit flipping modification:
-# cipher[:16]     - Keep first block unchanged
-# cipher[16:18]   - These hex chars represent the byte we want to modify
-# cipher[18:]     - Keep the rest unchanged
-# The modification works because:
-# 1. In CBC, each plaintext block is XORed with previous ciphertext block
-# 2. By modifying the ciphertext block before where 'r' appears,
-#    we affect the XOR operation during decryption of the next block
-# 3. This causes 'r' to become 's' after decryption
-cipher = cipher[:16] + hex(int(cipher[16:18], 16) ^ xor)[2:] + cipher[18:]
-print("Modified ciphertext:", cipher)
+    # cipher[:16]     - Keep first block unchanged
+    # cipher[16:18]   - These hex chars represent the byte we want to modify
+    # cipher[18:]     - Keep the rest unchanged
+    # The modification works because:
+    # 1. In CBC, each plaintext block is XORed with previous ciphertext block
+    # 2. By modifying the ciphertext block before where 'r' appears,
+    #    we affect the XOR operation during decryption of the next block
+    # 3. This causes 'r' to become 's' after decryption
+    cipher = cipher[:16] + hex(int(cipher[16:18], 16) ^ xor)[2:] + cipher[18:]
+    print("Modified ciphertext:", cipher)
 
-# When this modified ciphertext is decrypted:
-# 1. The decryption process XORs each block with the previous ciphertext block
-# 2. Our modified ciphertext block causes the XOR to flip the bits just right
-# 3. The 'r' in 'parsword' becomes 's', making it 'password'
-# 4. The check for 'admin&password=goBigDawgs123' now succeeds
-result = decrypt_data(cipher)
-print("\nDecryption result:", result)
+    # When this modified ciphertext is decrypted:
+    # 1. The decryption process XORs each block with the previous ciphertext block
+    # 2. Our modified ciphertext block causes the XOR to flip the bits just right
+    # 3. The 'r' in 'parsword' becomes 's', making it 'password'
+    # 4. The check for 'admin&password=goBigDawgs123' now succeeds
+    result = decrypt_data(cipher)
+    print("\nDecryption result:", result)
 except Exception as e:
-print(f"An error occurred: {e}")
+    print(f"An error occurred: {e}")
